@@ -37,7 +37,21 @@ Avant optimisation
 ║ 1974507                   │ 9229            │                                    ║
 ╚═══════════════════════════╧═════════════════╧════════════════════════════════════╝
 
-- variable length
+1/  Pour que la struct Voter taille sur 1 slot, la taille de votedProposalId a été passée de 256 bits à 240 bits
+ struct Voter {  
+        bool isRegistered; //8 bits : 1 bytes
+        bool hasVoted;      // 8 bits : 1 bytes
+        uint240 votedProposalId; //il restait 240 bits dans le slot pour cette variable
+    }
+2/  struct Proposal {
+        string description;  //casse le slot : ca créé un nouveau slot
+        uint voteCount;
+    }
+    la structure prend 1 slot qui va etre occupé par description et elle aura besoin d'un autre slot pour voteCount.
+    L'4'optimisation consiste à ne pas utiliser de string mais un bytes16 (16 bytes) et un unit32 (4bytes)
+    Mais dans ce cas, la taille de la descriptio nsera probablemetn trop courte. Donc, on n'y touche aps.
+
+
 
 
 

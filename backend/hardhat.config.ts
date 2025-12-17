@@ -1,8 +1,13 @@
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import "@nomicfoundation/hardhat-ethers";
+import hardhatStorageLayoutInspector from "@solidstate/hardhat-storage-layout-inspector";
+
+
 import { configVariable, defineConfig } from "hardhat/config";
 
+
 export default defineConfig({
-  plugins: [hardhatToolboxMochaEthersPlugin],
+  plugins: [hardhatToolboxMochaEthersPlugin,hardhatStorageLayoutInspector],
   solidity: {
     profiles: {
       default: {
@@ -15,6 +20,14 @@ export default defineConfig({
             enabled: true,
             runs: 200,
           },
+        },
+      },
+    },
+    // Ajoute ça pour inclure le storageLayout directement dans les artifacts JSON (facultatif)
+    settings: {
+      outputSelection: {
+        "*": {
+          "*": ["storageLayout"],
         },
       },
     },

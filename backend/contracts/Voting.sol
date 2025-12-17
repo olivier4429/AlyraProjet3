@@ -2,25 +2,19 @@
 
 pragma solidity 0.8.28;
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
 
 contract Voting is Ownable {
 
 
-    uint public winningProposalID;
-    
-    struct Voter {
-        bool isRegistered;
-        bool hasVoted;
-        uint votedProposalId;
+    //Storage packing : 1 slot = 32 bytes = 256 bits
+    // une structure prend 1 slot de toute façon
+    struct Voter {  
+        bool isRegistered; //8 bits : 1 bytes
+        bool hasVoted;      // 8 bits : 1 bytes
+        uint240 votedProposalId; //il restait 240 bits dans le slot pour cette variable
     }
 
-    struct Proposal {
-        string description;
-        uint voteCount;
-    }
-
-    enum  WorkflowStatus {
+    enum WorkflowStatus { // 6 enums => log2(6) => 3 : (2³=8) => uint3 => stockage dans un uint8 (unit3 n'existe pas) => 1 byte
         RegisteringVoters,
         ProposalsRegistrationStarted,
         ProposalsRegistrationEnded,
@@ -29,11 +23,24 @@ contract Voting is Ownable {
         VotesTallied
     }
 
-    WorkflowStatus public workflowStatus;
-    Proposal[] proposalsArray;
-    mapping (address => Voter) voters;
+    //On pourrait essayer d'optimiser pour faire teniur le tout sur 1 slot ( en remplacant string par bytes16). 
+    //Mais c'est un peu trop contraignant pour une description. Du coup, inutile d'optimiser voteCount.
+    struct Proposal {
+        string description;  //casse le slot : ca créé un nouveau slot.
+        uint voteCount;
+    }
+
+   
+
+    WorkflowStatus public workflowStatus; // 1 slot consommé
+    Proposal[] proposalsArray;  //x slots 
+    mapping (address => Voter) voters; // pas de slot consommé car mapping
+
+   
+    uint240 public winningProposalID; 
 
 
+    //pas de consomme de stockage pour les events. ils sont loggés dans la blockchain
     event VoterRegistered(address voterAddress); 
     event WorkflowStatusChange(WorkflowStatus previousStatus, WorkflowStatus newStatus);
     event ProposalRegistered(uint proposalId);
@@ -56,7 +63,7 @@ contract Voting is Ownable {
         return voters[_addr];
     }
     
-    function getOneProposal(uint _id) external onlyVoters view returns (Proposal memory) {
+    function getOneProposal(uint240 _id) external onlyVoters view returns (Proposal memory) {
         return proposalsArray[_id];
     }
 
@@ -89,7 +96,7 @@ contract Voting is Ownable {
 
     // ::::::::::::: VOTE ::::::::::::: //
 
-    function setVote( uint _id) external onlyVoters {
+    function setVote( uint240 _id) external onlyVoters {
         require(workflowStatus == WorkflowStatus.VotingSessionStarted, 'Voting session havent started yet');
         require(voters[msg.sender].hasVoted != true, 'You have already voted');
         require(_id < proposalsArray.length, 'Proposal not found'); // pas obligé, et pas besoin du >0 car uint
@@ -136,8 +143,8 @@ contract Voting is Ownable {
 
    function tallyVotes() external onlyOwner {
        require(workflowStatus == WorkflowStatus.VotingSessionEnded, "Current status is not voting session ended");
-       uint _winningProposalId;
-      for (uint256 p = 0; p < proposalsArray.length; p++) {
+       uint240 _winningProposalId; // temporaire pour ne pas écrire dans le storage avant la fin du calcul
+      for (uint240 p = 0; p < proposalsArray.length; p++) { 
            if (proposalsArray[p].voteCount > proposalsArray[_winningProposalId].voteCount) {
                _winningProposalId = p;
           }
